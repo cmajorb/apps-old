@@ -81,6 +81,9 @@ function completeCodeFlow(params){
 
     url: state.provider.oauth2.token_uri,
     type: 'POST',
+    headers: {
+    "Authorization": "Basic " + btoa("82b330f7-1186-4059-8c31-62dce4b18d77" + ":" + "AKgTeRtUGHrr3Eu7HF0fJf6DfbrLTk2ieyeSpR0KUweizQWfqZICOYjHjUbXegMajNhTgQEKt5AZryb_5KAZTIs")
+    },
     data: {
       code: params.code,
       grant_type: 'authorization_code',
@@ -231,12 +234,13 @@ function providers(fhirServiceUrl, callback, errback){
       };
 
       try {
-        jQuery.each(r.rest[0].security.extension, function(responseNum, arg){
-          if (arg.url === "http://fhir-registry.smarthealthit.org/Profile/oauth-uris#register") {
+        jQuery.each(r.rest[0].security.extension[0].extension, function(responseNum, arg){
+
+          if (arg.url === "register") {
             res.oauth2.registration_uri = arg.valueUri;
-          } else if (arg.url === "http://fhir-registry.smarthealthit.org/Profile/oauth-uris#authorize") {
+          } else if (arg.url === "authorize") {
             res.oauth2.authorize_uri = arg.valueUri;
-          } else if (arg.url === "http://fhir-registry.smarthealthit.org/Profile/oauth-uris#token") {
+          } else if (arg.url === "token") {
             res.oauth2.token_uri = arg.valueUri;
           }
         });
@@ -352,12 +356,10 @@ BBClient.authorize = function(params, errback){
 };
 
 BBClient.resolveAuthType = function (fhirServiceUrl, callback, errback) {
-
       jQuery.get(
         fhirServiceUrl+"/metadata",
         function(r){
-          var type = "none";
-          
+          var type = "oauth2";
           try {
             if (r.rest[0].security.service[0].coding[0].code.toLowerCase() === "oauth2") {
                 type = "oauth2";
@@ -424,7 +426,7 @@ var regexpSpecialChars = /([\[\]\^\$\|\(\)\\\+\*\?\{\}\=\!])/gi;
 
 function relative(id, server) {
   if (!id.match(/^http/)) {
-    id = server.serviceUrl + '/' + id
+    id = server.serviceUrl + '/Patient/' + id
   }
   var quotedBase = ( server.serviceUrl + '/' ).replace(regexpSpecialChars, '\\$1');
   var matcher = new RegExp("^"+quotedBase + "([^/]+)/([^/]+)(?:/_history/(.*))?$");
@@ -498,10 +500,10 @@ function FhirClient(p) {
       var ret = [];
       var feed = atomResult.feed || atomResult;
       (feed.entry || []).forEach(function(e){
-        var more = client.indexResource(e.id, e.content);
+        var more = client.indexResource(e.resource.id, e.resource);
         [].push.apply(ret, more);
       });
-      return ret; 
+      return ret;
     };
 
     client.authenticated = function(p) {
